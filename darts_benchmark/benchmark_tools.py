@@ -178,6 +178,12 @@ def silence_prompt():
     # ray, optuna and pytorch: all are very verbose, and ray tune
     # forwards the output for multiple processes in parallel
     # so we need to silence warnings to make the prompt readable
+
+    logger = logging.getLogger('cmdstanpy')
+    logger.addHandler(logging.NullHandler())
+    logger.propagate = False
+    logger.setLevel(logging.CRITICAL)
+
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     warnings.filterwarnings("ignore")
     for logger in loggers:
