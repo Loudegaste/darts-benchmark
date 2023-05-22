@@ -16,9 +16,9 @@ from darts.models.forecasting.forecasting_model import (
     LocalForecastingModel,
 )
 from darts.models.forecasting.torch_forecasting_model import TorchForecastingModel
+from darts.dataprocessing.transformers import Scaler
+from sklearn.preprocessing import StandardScaler
 
-# Silencing pytorch as having multiple training in parallel makes the output unreadable
-logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
 # Add some options for deep learning models
 early_stopper = EarlyStopping("train_loss", min_delta=0.001, patience=3, verbose=True)
 PL_TRAINER_KWARGS = {
@@ -48,7 +48,7 @@ def evaluate_model(
     forecast_horizon=1,
     repeat=1,
     get_output_sample=False,
-    **kwargs
+    scale_model=True
 ):
     """
     _description_
@@ -75,10 +75,20 @@ def evaluate_model(
     """
 
     set_randommness()
-
+    logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
+    scaler = Scaler(StandardScaler())
+    
     # Standardizes inputs to have the same entry point for all models and datasets
     if issubclass(model_class, TorchForecastingModel):
         model_params["pl_trainer_kwargs"] = PL_TRAINER_KWARGS
+
+    if scale_model:
+        if past_covariates:
+            past_covariates = scaler.fit_transform(past_covariates)
+        if future_covariates:
+            future_covariates = scaler.fit_transform(future_covariates)
+        series = scaler.fit_transform(series)
+
     # now we performe the evaluation
     model_instance = model_class(**model_params)
     is_local_model = isinstance(model_instance, LocalForecastingModel)
@@ -89,6 +99,7 @@ def evaluate_model(
         "retrain": retrain,
         "start": split,
         "stride": stride,
+        "metric": metric,
         "forecast_horizon": forecast_horizon,
         "last_points_only": True,
     }
@@ -104,13 +115,18 @@ def evaluate_model(
         function_args["future_covariates"] = future_covariates
 
     # performing evaluation
-    losses = [model_instance.backtest(**function_args) for _ in range(repeat)]
+    mean_losse = np.mean([model_instance.backtest(**function_args) for _ in range(repeat)])
+    
     if not get_output_sample:
-        return np.mean(losses)
+        return mean_losse
     else:
+        # historical_forecasts doesn't accept metric as an argument
         if "metric" in function_args:
             del function_args["metric"]
-        return np.mean(losses), model_instance.historical_forecasts(**function_args)
+        hist_forecast = model_instance.historical_forecasts(**function_args)
+        if scale_model:
+            hist_forecast = scaler.inverse_transform(hist_forecast)
+        return mean_losse, hist_forecast
 
 
 def retrain_func(counter, pred_time, train_series, past_covariates, future_covariates):

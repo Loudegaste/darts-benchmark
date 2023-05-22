@@ -23,6 +23,7 @@ from darts.timeseries import TimeSeries
 from darts.utils import missing_values
 
 
+
 Dataset = namedtuple(
     "Dataset",
     ["name", "series", "future_covariates", "past_covariates"],
@@ -40,7 +41,9 @@ def evaluation_step(
     future_covariates: TimeSeries = None,
     forecast_horizon=1,
     stride: int = 1,
+    scale_model=True,
 ):
+    
     import warnings
 
     warnings.filterwarnings("ignore")
@@ -59,6 +62,7 @@ def evaluation_step(
         future_covariates=future_covariates,
         stride=stride,
         forecast_horizon=forecast_horizon,
+        scale_model=scale_model,
     )
     session.report({"metric": result})
 
@@ -74,6 +78,7 @@ def optuna_search(
     time_budget=60,
     optuna_dir=None,
     forecast_horizon=1,
+    scale_model=True,
     **kwargs,
 ):
 
@@ -113,6 +118,7 @@ def optuna_search(
         future_covariates=dataset.future_covariates,
         stride=stride,
         forecast_horizon=forecast_horizon,
+        scale_model=scale_model,
     )
 
     search_alg = OptunaSearch(

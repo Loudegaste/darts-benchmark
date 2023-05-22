@@ -24,23 +24,6 @@ def convert_to_ts(ds: TimeSeries):
     )
 
 
-def create_dataset_dict_entry(
-    name: str,
-    series: TimeSeries,
-    past_covariates=None,
-    future_covariates=None,
-    max_length=-1,
-):
-    output = {"dataset_name": name, "series": series[:max_length]}
-    if past_covariates:
-        output["has_past_cov"] = True
-        output["past_covariates"] = past_covariates[:-1]
-    if future_covariates:
-        output["has_future_cov"] = True
-        output["future_covariates"] = future_covariates[:-1]
-    return output
-
-
 def experiment(
     list_datasets: List[Dataset],
     models,
@@ -52,6 +35,7 @@ def experiment(
     metric=mae,
     num_test_points=20,
     silent_search=False,
+    scale_model=True,
 ):
     """
     Takes a list of datasets
@@ -73,15 +57,15 @@ def experiment(
         results = dict()
 
     for dataset in list_datasets:
+        fh_corrected = forecast_horizon
+        if forecast_horizon < 1:
+            fh_corrected = int(forecast_horizon * (1 - split) * len(dataset.series))
+        print(f"Using forecast horizon of length {fh_corrected}")
+
         for model_class in models:
 
             stride = int((1 - split) * len(dataset.series) / num_test_points)
             stride = max(stride, 1)
-
-            fh_corrected = forecast_horizon
-            if forecast_horizon < 1:
-                fh_corrected = int(forecast_horizon * (1 - split) * len(dataset.series))
-            print(f"Using forecast horizon of length {fh_corrected}")
 
             if (
                 dataset.name in results
@@ -105,18 +89,23 @@ def experiment(
                     metric=metric,
                     stride=stride,
                     split=split,
+                    scale_model=scale_model,
                 )
+
             if silent_search:
                 silence_prompt()
             output = evaluate_model(
                 model_class,
-                **dataset._asdict(),
+                series=dataset.series,
+                past_covariates=dataset.past_covariates,
+                future_covariates=dataset.future_covariates,
                 model_params=model_params,
                 split=split,
                 forecast_horizon=fh_corrected,
                 repeat=repeat,
                 metric=metric,
                 stride=stride,
+                scale_model=scale_model,
             )
 
             print("#####################################################")
@@ -148,24 +137,26 @@ def format_output(results: Dict[str, Dict[str, float]]):
     return df
 
 
-def illustrate(models, ds, split=0.8, forecast_horizon=1, time_budget=0, metric=mae):
-    limit = int(len(ds["series"]) * split * 0.95)
-    target = ds["series"][limit:]
+def illustrate(models, dataset, split=0.8, forecast_horizon=1, time_budget=0, metric=mae):
+    limit = int(len(dataset.series) * split * 0.95)
+    target = dataset["series"][limit:]
     target.plot()
     for model_class in models:
-        model_params = FIXED_PARAMS[model_class.__name__](**ds)
+        model_params = FIXED_PARAMS[model_class.__name__](**dataset)
         if time_budget:
             model_params = optuna_search(
                 model_class,
                 fixed_params=model_params,
-                **ds,
+                dataset=dataset,
                 time_budget=time_budget,
                 forecast_horizon=forecast_horizon,
                 metric=metric,
             )
         _, output = evaluate_model(  # type: ignore
             model_class,
-            **ds,
+            series=dataset.series,
+            past_covariates=dataset.past_covariates,
+            future_covariates=dataset.future_covariates,
             model_params=model_params,
             split=0.8,
             forecast_horizon=forecast_horizon,
