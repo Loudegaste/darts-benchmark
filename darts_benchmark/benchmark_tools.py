@@ -7,9 +7,9 @@ from tempfile import TemporaryDirectory
 from typing import Dict, List
 
 import pandas as pd
-from model_evaluation import evaluate_model
-from optuna_search import optuna_search
-from param_space import FIXED_PARAMS
+from darts_benchmark.model_evaluation import evaluate_model
+from darts_benchmark.optuna_search import optuna_search
+from darts_benchmark.param_space import FIXED_PARAMS
 
 from darts import TimeSeries
 from darts.metrics import mae

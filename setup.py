@@ -7,6 +7,7 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
+        'pytorch-lightning',
         'darts==0.24.0',
         'optuna~=3.1',
         'ray~=2.3',

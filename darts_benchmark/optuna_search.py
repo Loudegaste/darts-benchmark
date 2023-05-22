@@ -3,8 +3,8 @@ import warnings
 from typing import Callable, Dict
 
 import ray
-from model_evaluation import evaluate_model
-from param_space import FIXED_PARAMS, OPTUNA_SEARCH_SPACE, optuna2params
+from darts_benchmark.model_evaluation import evaluate_model
+from darts_benchmark.param_space import FIXED_PARAMS, OPTUNA_SEARCH_SPACE, optuna2params
 from ray.air import session
 from ray.tune.search.optuna import OptunaSearch
 from sklearn.preprocessing import MaxAbsScaler
