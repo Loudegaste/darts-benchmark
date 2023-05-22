@@ -113,7 +113,7 @@ def fixed_lags(series, suggested_lags=None):
 
 
 # --------------------------------------- NHITS
-def _params_NHITS(trial, series, forecast_horizon, **kwargs):
+def _optuna_params_NHITS(trial, series, forecast_horizon, **kwargs):
     suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
     trial.suggest_categorical("add_past_encoders", [False, True])
@@ -135,7 +135,7 @@ def _fixed_params_NHITS(series, forecast_horizon, suggested_lags=None, **kwargs)
 
 
 # --------------------------------------- NLINEAR
-def _params_NLINEAR(trial, series, forecast_horizon, **kwargs):
+def _optuna_params_NLINEAR(trial, series, forecast_horizon, **kwargs):
 
     suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
@@ -158,7 +158,7 @@ def _fixed_params_NLINEAR(series, forecast_horizon, suggested_lags=None, **kwarg
 
 
 # --------------------------------------- DLINEAR
-def _params_DLINEAR(trial, series, forecast_horizon, **kwargs):
+def _optuna_params_DLINEAR(trial, series, forecast_horizon, **kwargs):
 
     input_size = suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
@@ -180,7 +180,7 @@ def _fixed_params_DLINEAR(series, forecast_horizon, suggested_lags=None, **kwarg
 
 
 # --------------------------------------- TCNMODEL
-def _params_TCNMODEL(trial, series, forecast_horizon, **kwargs):
+def _optuna_params_TCNMODEL(trial, series, forecast_horizon, **kwargs):
 
     input_size = suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_int("output_chunk_length", 1, min(forecast_horizon, input_size - 1))
@@ -203,7 +203,7 @@ def _fixed_params_TCNMODEL(series, forecast_horizon, suggested_lags=None, **kwar
 
 
 # --------------------------------------- LGMBMODEL
-def _params_LGBMModel(trial, series, future_covariates=None, **kwargs):
+def _optuna_params_LGBMModel(trial, series, future_covariates=None, **kwargs):
 
     suggest_lags(trial, series, "lags")
 
@@ -239,7 +239,7 @@ def _fixed_params_LGBMModel(
 
 
 # --------------------------------------- LINEARREGRESSION
-def _params_LinearRegression(trial, series, future_covariates=None, **kwargs):
+def _optuna_params_LinearRegression(trial, series, future_covariates=None, **kwargs):
     # lag length as a ratio of the train data size
     suggest_lags(trial, series, "lags")
 
@@ -251,7 +251,7 @@ def _params_LinearRegression(trial, series, future_covariates=None, **kwargs):
 
 def _fixed_params_LinearRegression(
     series,
-    suggested_lags: int = None,
+    suggested_lags= None,
     past_covariates=None,
     lags_past_covariates=[-1],
     future_covariates=None,
@@ -291,7 +291,7 @@ def _fixed_params_Catboost(
 
 
 # --------------------------------------- NBEATS
-def _params_Nbeats(trial, series, forecast_horizon, **kwargs):
+def _optuna_params_Nbeats(trial, series, forecast_horizon, **kwargs):
     suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
 
@@ -313,7 +313,7 @@ def _fixed_params_Nbeats(series, forecast_horizon, suggested_lags=None, **kwargs
 
 
 # --------------------------------------- ARIMA
-def _params_arima(trial, series, **kwargs):
+def _optuna_params_arima(trial, series, **kwargs):
     """Raytune gets stuck on this model. Since no fix could be found, we deactivate optuna search for ARIMA"""
     suggest_lags(trial, series, "p")
     trial.suggest_int("q", 0, 10)
@@ -337,7 +337,7 @@ def _fixed_params_arima(**kwargs):
 
 
 # --------------------------------------- prophet
-def _params_prophet(trial, series, **kwargs):
+def _optuna_params_prophet(trial, series, **kwargs):
     growth = trial.suggest_categorical("growth", ["linear", "logistic"])
     if growth == "logistic":
         min_ = series.values().min()
@@ -353,7 +353,7 @@ def _params_prophet(trial, series, **kwargs):
 
 
 # --------------------------------------- FFT
-def _params_fft(trial, **kwargs):
+def _optuna_params_fft(trial, **kwargs):
     trend = trial.suggest_categorical("trend", ["poly", "exp", None])
     if trend == "poly":
         trial.suggest_int("trend_poly_degree", 1, 3)
@@ -364,16 +364,16 @@ def _fixed_params_fft(**kwargs):
 
 
 OPTUNA_SEARCH_SPACE = {
-    TCNModel.__name__: _params_TCNMODEL,
-    DLinearModel.__name__: _params_DLINEAR,
-    NLinearModel.__name__: _params_NLINEAR,
-    NHiTSModel.__name__: _params_NHITS,
-    NBEATSModel.__name__: _params_Nbeats,
-    FFT.__name__: _params_fft,
-    LightGBMModel.__name__: _params_LGBMModel,
-    LinearRegressionModel.__name__: _params_LinearRegression,
-    Prophet.__name__: _params_prophet,
-    ARIMA.__name__: _params_arima,
+    TCNModel.__name__: _optuna_params_TCNMODEL,
+    DLinearModel.__name__: _optuna_params_DLINEAR,
+    NLinearModel.__name__: _optuna_params_NLINEAR,
+    NHiTSModel.__name__: _optuna_params_NHITS,
+    NBEATSModel.__name__: _optuna_params_Nbeats,
+    FFT.__name__: _optuna_params_fft,
+    LightGBMModel.__name__: _optuna_params_LGBMModel,
+    LinearRegressionModel.__name__: _optuna_params_LinearRegression,
+    Prophet.__name__: _optuna_params_prophet,
+    ARIMA.__name__: _optuna_params_arima,
 }
 
 FIXED_PARAMS = {

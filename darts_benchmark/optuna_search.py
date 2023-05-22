@@ -70,8 +70,6 @@ def evaluation_step(
 def optuna_search(
     model_class: ForecastingModel,
     dataset: Dataset,
-    fixed_params: Dict = None,
-    optuna_search_space: Callable = None,
     metric: Callable[[TimeSeries, TimeSeries], float] = mae,
     split: float = 0.85,
     stride: int = 1,
@@ -79,32 +77,27 @@ def optuna_search(
     optuna_dir=None,
     forecast_horizon=1,
     scale_model=True,
-    **kwargs,
 ):
 
     if not optuna_dir:
         temp_dir = tempfile.TemporaryDirectory()
         optuna_dir = temp_dir.name
 
-    fixed_params = (
-        fixed_params.copy()
-        if fixed_params
-        else FIXED_PARAMS[model_class.__name__](series=dataset.series.split_after(split)[0])
-    )
+    fixed_params = FIXED_PARAMS[model_class.__name__](series=dataset.series.split_after(split)[0])
+    
 
-    if not optuna_search_space and model_class.__name__ not in OPTUNA_SEARCH_SPACE:
+    if model_class.__name__ not in OPTUNA_SEARCH_SPACE:
         warnings.warn(
             "Optuna search space not found. skipping optuna search and returning fixed params instead."
         )
         return fixed_params
 
-    optuna_search_space = optuna_search_space or (
-        lambda trial: OPTUNA_SEARCH_SPACE[model_class.__name__](
-            trial, 
-            series=dataset.series.split_after(split)[0],
-            forecast_horizon=forecast_horizon
-        )
-    )
+    optuna_search_space = lambda trial: OPTUNA_SEARCH_SPACE[model_class.__name__](
+                          trial, 
+                          series=dataset.series.split_after(split)[0],
+                          forecast_horizon=forecast_horizon
+                          )
+    
 
     # building optuna objects
     trainable_object = ray.tune.with_parameters(

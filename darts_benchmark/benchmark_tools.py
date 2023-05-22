@@ -76,9 +76,9 @@ def experiment(
             model_params = FIXED_PARAMS[model_class.__name__](
                 series=dataset.series.split_after(split)[0], forecast_horizon=fh_corrected
             )
+            if silent_search:
+                silence_prompt()
             if grid_search and time_budget:
-                if silent_search:
-                    silence_prompt()
                 model_params = optuna_search(
                     model_class,
                     fixed_params=model_params,
@@ -92,8 +92,6 @@ def experiment(
                     scale_model=scale_model,
                 )
 
-            if silent_search:
-                silence_prompt()
             output = evaluate_model(
                 model_class,
                 series=dataset.series,
@@ -137,32 +135,49 @@ def format_output(results: Dict[str, Dict[str, float]]):
     return df
 
 
-def illustrate(models, dataset, split=0.8, forecast_horizon=1, time_budget=0, metric=mae):
+def illustrate(models, dataset, split=0.8, forecast_horizon=1, 
+               grid_search=False, time_budget=60, metric=mae, 
+               num_test_points=20, scale_model=True, silent_search=False):
+
+    fh_corrected = forecast_horizon
+
+    if forecast_horizon < 1:
+        fh_corrected = int(forecast_horizon * (1 - split) * len(dataset.series))
+    print(f"Using forecast horizon of length {fh_corrected}")
+    stride = int((1 - split) * len(dataset.series) / num_test_points)
+    stride = max(stride, 1)
+
     limit = int(len(dataset.series) * split * 0.95)
-    target = dataset["series"][limit:]
+    target = dataset.series[limit:]
     target.plot()
+    if silent_search:
+        silence_prompt()
     for model_class in models:
-        model_params = FIXED_PARAMS[model_class.__name__](**dataset)
-        if time_budget:
+        if grid_search:
             model_params = optuna_search(
                 model_class,
-                fixed_params=model_params,
                 dataset=dataset,
                 time_budget=time_budget,
-                forecast_horizon=forecast_horizon,
+                forecast_horizon=fh_corrected,
                 metric=metric,
+                scale_model=scale_model,
             )
+        else:
+            model_params = FIXED_PARAMS[model_class.__name__](**dataset._asdict())
+
         _, output = evaluate_model(  # type: ignore
             model_class,
             series=dataset.series,
             past_covariates=dataset.past_covariates,
             future_covariates=dataset.future_covariates,
             model_params=model_params,
-            split=0.8,
-            forecast_horizon=forecast_horizon,
+            split=split,
+            forecast_horizon=fh_corrected,
             get_output_sample=True,
+            scale_model=scale_model,
         )
-        output.plot(label=f"{model_class.__name__} - {metric(output, target):.2f}")
+        output.plot(label=f"{model_class.__name__} \n"
+                          f"{metric.__name__}={metric(output, target):.2f}")
 
 
 def silence_prompt():
