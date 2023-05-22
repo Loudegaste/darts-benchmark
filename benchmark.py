@@ -3,7 +3,7 @@ This is the main file for the benchmarking experiment.
 """
 import os
 
-from benchmark_tools import Dataset, convert_to_ts, experiment
+from darts_benchmark.benchmark_tools import Dataset, convert_to_ts, experiment
 from sklearn.preprocessing import StandardScaler
 
 from darts.dataprocessing.transformers import Scaler
@@ -31,7 +31,6 @@ from darts.models import (
 from darts.utils import missing_values
 
 # Loading the models to benchmark
-
 
 models = [
     NaiveSeasonal,
@@ -63,7 +62,7 @@ ds = scaler.fit_transform(
 datasets += [
     Dataset(
         name="Weather",
-        series=ds["T (degC)"],  # type: ignore
+        series=ds[["T (degC)", "rh (%)"]],  # type: ignore
         past_covariates=ds[  # type: ignore
             [
                 "p (mbar)",
@@ -119,7 +118,7 @@ datasets += [Dataset(series=ds, name="USGasoline")]
 
 if __name__ == "__main__":
     experiment(
-        list_datasets=datasets,
+        list_datasets=datasets[1:],
         #models=models,
         models=[NLinearModel],
         grid_search=True,

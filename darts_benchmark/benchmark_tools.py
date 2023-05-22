@@ -2,23 +2,16 @@ import json
 import logging
 import os
 import warnings
-from collections import namedtuple
 from tempfile import TemporaryDirectory
 from typing import Dict, List
 
 import pandas as pd
 from darts_benchmark.model_evaluation import evaluate_model
-from darts_benchmark.optuna_search import optuna_search
+from darts_benchmark.optuna_search import optuna_search, Dataset
 from darts_benchmark.param_space import FIXED_PARAMS
 
 from darts import TimeSeries
 from darts.metrics import mae
-
-Dataset = namedtuple(
-    "Dataset",
-    ["name", "series", "future_covariates", "past_covariates"],
-    defaults=(None, None, None),
-)
 
 
 def convert_to_ts(ds: TimeSeries):
@@ -97,7 +90,7 @@ def experiment(
                 continue
 
             model_params = FIXED_PARAMS[model_class.__name__](
-                **dataset._asdict(), forecast_horizon=fh_corrected
+                series=dataset.series.split_after(split)[0], forecast_horizon=fh_corrected
             )
             if grid_search and time_budget:
                 if silent_search:
@@ -105,7 +98,7 @@ def experiment(
                 model_params = optuna_search(
                     model_class,
                     fixed_params=model_params,
-                    **dataset._asdict(),
+                    dataset=dataset,
                     time_budget=time_budget,
                     optuna_dir=os.path.join(experiment_dir, "optuna"),
                     forecast_horizon=fh_corrected,

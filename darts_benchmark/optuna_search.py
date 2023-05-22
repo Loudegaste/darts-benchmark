@@ -8,6 +8,8 @@ from darts_benchmark.param_space import FIXED_PARAMS, OPTUNA_SEARCH_SPACE, optun
 from ray.air import session
 from ray.tune.search.optuna import OptunaSearch
 from sklearn.preprocessing import MaxAbsScaler
+from collections import namedtuple
+
 
 from darts.dataprocessing.transformers import Scaler
 
@@ -20,6 +22,12 @@ from darts.models.forecasting.torch_forecasting_model import (
 from darts.timeseries import TimeSeries
 from darts.utils import missing_values
 
+
+Dataset = namedtuple(
+    "Dataset",
+    ["name", "series", "future_covariates", "past_covariates"],
+    defaults=(None, None, None),
+)
 
 def evaluation_step(
     config,
@@ -57,9 +65,7 @@ def evaluation_step(
 
 def optuna_search(
     model_class: ForecastingModel,
-    series: TimeSeries,
-    past_covariates: TimeSeries = None,
-    future_covariates: TimeSeries = None,
+    dataset: Dataset,
     fixed_params: Dict = None,
     optuna_search_space: Callable = None,
     metric: Callable[[TimeSeries, TimeSeries], float] = mae,
@@ -75,14 +81,10 @@ def optuna_search(
         temp_dir = tempfile.TemporaryDirectory()
         optuna_dir = temp_dir.name
 
-    dataset_data = {
-        "series": series.split_after(split)[0],
-    }
-
     fixed_params = (
         fixed_params.copy()
         if fixed_params
-        else FIXED_PARAMS[model_class.__name__](**dataset_data)
+        else FIXED_PARAMS[model_class.__name__](series=dataset.series.split_after(split)[0])
     )
 
     if not optuna_search_space and model_class.__name__ not in OPTUNA_SEARCH_SPACE:
@@ -93,20 +95,22 @@ def optuna_search(
 
     optuna_search_space = optuna_search_space or (
         lambda trial: OPTUNA_SEARCH_SPACE[model_class.__name__](
-            trial, **dataset_data, forecast_horizon=forecast_horizon
+            trial, 
+            series=dataset.series.split_after(split)[0],
+            forecast_horizon=forecast_horizon
         )
     )
 
     # building optuna objects
     trainable_object = ray.tune.with_parameters(
         evaluation_step,
-        series=series,
+        series=dataset.series,
         model_class=model_class,
         metric=metric,
         fixed_params=fixed_params,
         split=split,
-        past_covariates=past_covariates,
-        future_covariates=future_covariates,
+        past_covariates=dataset.past_covariates,
+        future_covariates=dataset.future_covariates,
         stride=stride,
         forecast_horizon=forecast_horizon,
     )
