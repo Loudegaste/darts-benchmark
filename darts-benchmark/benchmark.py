@@ -120,11 +120,12 @@ datasets += [Dataset(series=ds, name="USGasoline")]
 if __name__ == "__main__":
     experiment(
         list_datasets=datasets,
-        models=models,
+        #models=models,
+        models=[NLinearModel],
         grid_search=True,
         forecast_horizon=0.05,
-        time_budget=600,
+        time_budget=60,
         repeat=5,
         silent_search=True,
-        experiment_dir=os.path.join(os.getcwd(), "results_long"),
+        # experiment_dir=os.path.join(os.getcwd(), "results_long"),
     )

@@ -139,12 +139,10 @@ def _params_NLINEAR(trial, series, forecast_horizon, **kwargs):
 
     suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
-
-    trial.suggest_categorical("const_init", [False, True])
-    normalize = trial.suggest_categorical("normalize", [False, True])
     shared_weights = trial.suggest_categorical("shared_weights", [False, True])
+    trial.suggest_categorical("const_init", [False, True])
 
-    if not shared_weights and not normalize:
+    if not shared_weights:
         # in current version, darts does not support covariates with normalize.
         # Should be fixed with https://github.com/unit8co/darts/pull/1583
         trial.suggest_categorical("add_past_encoders", [False, True])
