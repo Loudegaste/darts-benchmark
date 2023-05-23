@@ -3,7 +3,7 @@ This file implements wrappers around backtest to have the same input structure f
 """
 import logging
 import random
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional, Tuple, Union
 from darts_benchmark.param_space import FIXED_PARAMS
 import numpy as np
 import torch
@@ -37,9 +37,9 @@ def set_randommness(seed=0):
 
 
 def evaluate_model(
-    model_class: ForecastingModel,
+    model_class,
     series: TimeSeries,
-    model_params: Dict = None,
+    model_params: Union[Dict, None] = None,
     metric: Callable[[TimeSeries, TimeSeries], float] = mae,
     split: float = 0.85,
     past_covariates: TimeSeries = None,
@@ -48,30 +48,36 @@ def evaluate_model(
     forecast_horizon=1,
     repeat=1,
     get_output_sample=False,
-    scale_model=True,
-):
+    scale_data=True,
+) -> Union[float, Tuple[float, TimeSeries]]:
     """
-    _description_
-    This function is used to evaluate a given model on a dataset.
-
-    Parameters
-    ----------
-    model_class
+    Evaluates a model on a given dataset. It will retrain the model for a number of times equal to `repeat` and return
+    the average metric value. If `get_output_sample` is True, it will also return the output sample of the model.
+        
+    Parameters:
+    -----------
+    model_class: ForecastingModel
         The class of the model to be evaluated.
-    series
-        The dataset on which the model will be evaluated.
-    model_params
-        The parameters for instantiating the model class.
-    metric
-        A darts metric function.
-    split
-        The split ratio between training and validation.
-    past_covariates
-        The past covariates for the model.
-    future_covariates
-        The future covariates for the model.
-    stride
-        Can be used to reduce the number of points tested for performance.
+    series: TimeSeries
+        The dataset to be used for evaluation.
+    model_params: Dict
+        The parameters of the model to be evaluated.
+    metric: Callable[[TimeSeries, TimeSeries], float]
+        The metric to be used for evaluation.
+    split: float
+        Portion of the dataset to be used for training.
+    past_covariates: TimeSeries
+    future_covariates: TimeSeries
+    stride: int
+        Interval between subsequent inference points.
+    forecast_horizon: int
+        The forecast horizon of the model
+    repeat: int
+        Number of times to retrain the model.
+    get_output_sample: bool
+        Whether to return a prediction exemple of the model.
+    scale_data: bool
+        Whether to scale the model inputs.
     """
 
     set_randommness()
@@ -82,7 +88,7 @@ def evaluate_model(
         print(f"No model params provided for model {model_class.__name__}," 
               "using the ones from the param_space.FIXED_PARAMS")
         model_params = FIXED_PARAMS[model_class.__name__](
-            series=series.split_after(split)[0],
+            series=series,
             forecast_horizon=forecast_horizon,
             past_covariates=past_covariates,
             future_covariates=future_covariates
@@ -92,7 +98,7 @@ def evaluate_model(
     if issubclass(model_class, TorchForecastingModel):
         model_params["pl_trainer_kwargs"] = PL_TRAINER_KWARGS
 
-    if scale_model:
+    if scale_data:
         if past_covariates:
             past_covariates = scaler.fit_transform(past_covariates)
         if future_covariates:
@@ -137,7 +143,7 @@ def evaluate_model(
         if repeat == 1:
             # if we only have one repeat, we might as well output the error of the single run
             mean_losse = metric(series, hist_forecast)
-        if scale_model:
+        if scale_data:
             hist_forecast = scaler.inverse_transform(hist_forecast)
         return mean_losse, hist_forecast
 

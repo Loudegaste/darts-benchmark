@@ -1,6 +1,6 @@
 import tempfile
 import warnings
-from typing import Callable, Dict
+from typing import Any, Callable, Dict
 
 import ray
 from darts_benchmark.model_evaluation import evaluate_model
@@ -41,7 +41,7 @@ def evaluation_step(
     future_covariates: TimeSeries = None,
     forecast_horizon=1,
     stride: int = 1,
-    scale_model=True,
+    scale_data=True,
 ):
     
     import warnings
@@ -62,13 +62,13 @@ def evaluation_step(
         future_covariates=future_covariates,
         stride=stride,
         forecast_horizon=forecast_horizon,
-        scale_model=scale_model,
+        scale_data=scale_data,
     )
     session.report({"metric": result})
 
 
 def optuna_search(
-    model_class: ForecastingModel,
+    model_class: Any,
     dataset: Dataset,
     forecast_horizon: int,
     metric: Callable[[TimeSeries, TimeSeries], float] = mae,
@@ -76,18 +76,41 @@ def optuna_search(
     stride: int = 1,
     time_budget=60,
     optuna_dir=None,
-    scale_model=True,
+    scale_data=True,
 ):
+    """
+    Performs an optuna hyperparameter search for the given model and dataset.
+    
+    Parameters:
+    -----------
+    model_class: Any
+        Model class to be used for the experiment
+    Dataset: namedtuple
+        Dataset to be used for the experiment
+    time_budget: int
+        Time budget for grid search
+    optuna_dir: str
+        Directory where to save the results
+    forecast_horizon: Union[int, float]
+        Forecast horizon to be used for the experiment.
+    metric: Callable[[TimeSeries, TimeSeries], float]
+        Metric to be used for evaluation
+    split: float
+        Fraction of the dataset to be used for training
+    stride: int
+        Stride to be used for the evaluation
+    scale_data: bool
+        Whether to scale the dataset (useful for neural networks)
+    """
 
     if not optuna_dir:
         temp_dir = tempfile.TemporaryDirectory()
         optuna_dir = temp_dir.name
 
     fixed_params = FIXED_PARAMS[model_class.__name__](
-        series=dataset.series.split_after(split)[0],
+        **dataset._asdict(), 
         forecast_horizon=forecast_horizon
         )
-    
 
     if model_class.__name__ not in OPTUNA_SEARCH_SPACE:
         warnings.warn(
@@ -97,7 +120,7 @@ def optuna_search(
 
     optuna_search_space = lambda trial: OPTUNA_SEARCH_SPACE[model_class.__name__](
                           trial, 
-                          series=dataset.series.split_after(split)[0],
+                          **dataset._asdict(),
                           forecast_horizon=forecast_horizon
                           )
     
@@ -114,7 +137,7 @@ def optuna_search(
         future_covariates=dataset.future_covariates,
         stride=stride,
         forecast_horizon=forecast_horizon,
-        scale_model=scale_model,
+        scale_data=scale_data,
     )
 
     search_alg = OptunaSearch(

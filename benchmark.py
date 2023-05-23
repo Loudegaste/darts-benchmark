@@ -96,5 +96,5 @@ if __name__ == "__main__":
         repeat=5,
         silent_search=True,
         experiment_dir=os.path.join(os.getcwd(), "results_long"),
-        scale_model=True
+        scale_data=True
     )
