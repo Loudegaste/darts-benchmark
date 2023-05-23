@@ -4,7 +4,7 @@ This file implements wrappers around backtest to have the same input structure f
 import logging
 import random
 from typing import Callable, Dict
-
+from darts_benchmark.param_space import FIXED_PARAMS
 import numpy as np
 import torch
 from pytorch_lightning.callbacks import EarlyStopping
@@ -39,7 +39,7 @@ def set_randommness(seed=0):
 def evaluate_model(
     model_class: ForecastingModel,
     series: TimeSeries,
-    model_params: Dict = dict(),
+    model_params: Dict = None,
     metric: Callable[[TimeSeries, TimeSeries], float] = mae,
     split: float = 0.85,
     past_covariates: TimeSeries = None,
@@ -48,7 +48,7 @@ def evaluate_model(
     forecast_horizon=1,
     repeat=1,
     get_output_sample=False,
-    scale_model=True
+    scale_model=True,
 ):
     """
     _description_
@@ -78,6 +78,16 @@ def evaluate_model(
     logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
     scaler = Scaler(StandardScaler())
     
+    if model_params is None:
+        print(f"No model params provided for model {model_class.__name__}," 
+              "using the ones from the param_space.FIXED_PARAMS")
+        model_params = FIXED_PARAMS[model_class.__name__](
+            series=series,
+            forecast_horizon=forecast_horizon, 
+            past_covariates=past_covariates,
+            future_covariates=future_covariates
+            )      
+
     # Standardizes inputs to have the same entry point for all models and datasets
     if issubclass(model_class, TorchForecastingModel):
         model_params["pl_trainer_kwargs"] = PL_TRAINER_KWARGS
@@ -124,6 +134,9 @@ def evaluate_model(
         if "metric" in function_args:
             del function_args["metric"]
         hist_forecast = model_instance.historical_forecasts(**function_args)
+        if repeat == 1:
+            # if we only have one repeat, we might as well output the error of the single run
+            mean_losse = metric(series, hist_forecast)
         if scale_model:
             hist_forecast = scaler.inverse_transform(hist_forecast)
         return mean_losse, hist_forecast
