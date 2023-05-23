@@ -89,6 +89,11 @@ def optuna2params(optuna_params: Dict[str, Any]) -> Dict[str, Any]:
 
         del output_params["prophet_seasonality_period"]
 
+    if optuna_params.get("torch_learning_rate"):
+        optuna_params["optimizer_kwargs"] = optuna_params.get("optimizer_kwargs", dict())
+        optuna_params["optimizer_kwargs"]["lr"] = optuna_params["torch_learning_rate"]
+        del output_params["torch_learning_rate"]
+
     return output_params
 
 
@@ -116,6 +121,7 @@ def fixed_lags(series, suggested_lags=None):
 def _optuna_params_NHITS(trial, series, forecast_horizon, **kwargs):
     suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
+    trial.suggest_float("torch_learning_rate", 1e-4, 1e-1, log=True)
     trial.suggest_categorical("add_past_encoders", [False, True])
     trial.suggest_int("num_stacks", 2, 3)
     trial.suggest_int("layer_widths", 64, 1024)
@@ -133,12 +139,33 @@ def _fixed_params_NHITS(series, forecast_horizon, suggested_lags=None, **kwargs)
 
     return output
 
+# --------------------------------------- NBEATS
+def _optuna_params_Nbeats(trial, series, forecast_horizon, **kwargs):
+    suggest_lags(trial, series, "input_chunk_length")
+    trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
+    trial.suggest_float("torch_learning_rate", 1e-4, 1e-1, log=True)
+    trial.suggest_categorical("add_past_encoders", [False, True])
+    trial.suggest_categorical("generic_architecture", [False, True])
+    trial.suggest_float("dropout", 0.0, 0.4)
+
+
+def _fixed_params_Nbeats(series, forecast_horizon, suggested_lags=None, **kwargs):
+    output = dict()
+    output["input_chunk_length"] = (
+        suggested_lags if suggested_lags else max(5, int(len(series) * 0.05))
+    )
+    output["output_chunk_length"] = forecast_horizon
+    output["generic_architecture"] = True
+    output["n_epochs"] = N_EPOCHS
+
+    return output
 
 # --------------------------------------- NLINEAR
 def _optuna_params_NLINEAR(trial, series, forecast_horizon, **kwargs):
 
     suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
+    trial.suggest_float("torch_learning_rate", 1e-4, 1e-1, log=True)
     shared_weights = trial.suggest_categorical("shared_weights", [False, True])
     trial.suggest_categorical("const_init", [False, True])
 
@@ -162,7 +189,7 @@ def _optuna_params_DLINEAR(trial, series, forecast_horizon, **kwargs):
 
     input_size = suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
-
+    trial.suggest_float("torch_learning_rate", 1e-4, 1e-1, log=True)
     trial.suggest_int("kernel_size", 2, input_size)
     shared_weights = trial.suggest_categorical("shared_weights", [False, True])
     if not shared_weights:
@@ -184,7 +211,7 @@ def _optuna_params_TCNMODEL(trial, series, forecast_horizon, **kwargs):
 
     input_size = suggest_lags(trial, series, "input_chunk_length")
     trial.suggest_int("output_chunk_length", 1, min(forecast_horizon, input_size - 1))
-
+    trial.suggest_float("torch_learning_rate", 1e-4, 1e-1, log=True)
     trial.suggest_int("kernel_size", 2, input_size - 1)
     trial.suggest_int("num_layers", 1, 4)
     trial.suggest_float("dropout", 0.0, 0.4)
@@ -242,8 +269,8 @@ def _fixed_params_LGBMModel(
 def _optuna_params_LinearRegression(trial, series, future_covariates=None, **kwargs):
     # lag length as a ratio of the train data size
     suggest_lags(trial, series, "lags")
-
     encoders_future = trial.suggest_categorical("add_future_encoders", [False, True])
+
     if encoders_future or future_covariates:
         trial.suggest_int("lags_future_covariates_past", 1, 5)
         trial.suggest_int("lags_future_covariates_future", 1, 5)
@@ -290,26 +317,6 @@ def _fixed_params_Catboost(
     return output
 
 
-# --------------------------------------- NBEATS
-def _optuna_params_Nbeats(trial, series, forecast_horizon, **kwargs):
-    suggest_lags(trial, series, "input_chunk_length")
-    trial.suggest_categorical("output_chunk_length", [1, forecast_horizon])
-
-    trial.suggest_categorical("add_past_encoders", [False, True])
-    trial.suggest_categorical("generic_architecture", [False, True])
-    trial.suggest_float("dropout", 0.0, 0.4)
-
-
-def _fixed_params_Nbeats(series, forecast_horizon, suggested_lags=None, **kwargs):
-    output = dict()
-    output["input_chunk_length"] = (
-        suggested_lags if suggested_lags else max(5, int(len(series) * 0.05))
-    )
-    output["output_chunk_length"] = forecast_horizon
-    output["generic_architecture"] = True
-    output["n_epochs"] = N_EPOCHS
-
-    return output
 
 
 # --------------------------------------- ARIMA
