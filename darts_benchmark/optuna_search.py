@@ -70,12 +70,12 @@ def evaluation_step(
 def optuna_search(
     model_class: ForecastingModel,
     dataset: Dataset,
+    forecast_horizon: int,
     metric: Callable[[TimeSeries, TimeSeries], float] = mae,
     split: float = 0.85,
     stride: int = 1,
     time_budget=60,
     optuna_dir=None,
-    forecast_horizon=1,
     scale_model=True,
 ):
 
@@ -83,7 +83,10 @@ def optuna_search(
         temp_dir = tempfile.TemporaryDirectory()
         optuna_dir = temp_dir.name
 
-    fixed_params = FIXED_PARAMS[model_class.__name__](series=dataset.series.split_after(split)[0])
+    fixed_params = FIXED_PARAMS[model_class.__name__](
+        series=dataset.series.split_after(split)[0],
+        forecast_horizon=forecast_horizon
+        )
     
 
     if model_class.__name__ not in OPTUNA_SEARCH_SPACE:
