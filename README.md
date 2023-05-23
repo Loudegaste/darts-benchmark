@@ -1,11 +1,10 @@
 # Darts-benchmark
-Darts-benchmark is a set of scripts used to compare the performance of different Darts models on custom datasets. It includes **Auto-ML functionnalities** whith Optuna hyperparameter gridsearch, as well as other utils to compare and tune models. A google colab showcase of the tools developed is available at https://colab.research.google.com/github/Loudegaste/darts-benchmark/blob/main/benchmark.ipynb 
+Darts-benchmark is a set of scripts used to compare the performance of different Darts models on custom datasets. It includes **Auto-ML functionnalities** whith Optuna hyperparameter gridsearch, as well as other utils to compare and tune models. A google colab showcase of the tools developed is available at https://colab.research.google.com/github/Loudegaste/darts-benchmark/blob/main/benchmark.ipynb.
 
 
+We ran a benchmarking experiment on 7 different datasets with 10 different models. We used 10 minutes of optuna search per Model/dataset combination and tested forecasting with both short forecast horizon (2 steps ahead) and long forecast horizon (5% of the test set). 
 
-
-
-Long time horizon performance with 10 minutes of Optuna tuning per model:
+The outcomes for the short forecast horizon on normalized datasets are the following:
 
 | dataset        |   AutoARIMA |   FFT |   LightGBMModel |   LinearRegressionModel |   NBEATSModel |   NHiTSModel |   NLinearModel |   NaiveSeasonal |   Prophet |   TCNModel |
 |:---------------|------------:|------:|----------------:|------------------------:|--------------:|-------------:|---------------:|----------------:|----------:|-----------:|
@@ -18,7 +17,7 @@ Long time horizon performance with 10 minutes of Optuna tuning per model:
 | Weather        |       0.537 | 0.502 |           0.07  |                   0.078 |         0.106 |        0.091 |          0.076 |           0.602 |     0.499 |      0.079 |
 
 
-Shorte time horizon performance with 10 minutes of Optuna tuning per model:
+and for the long forecast horizon:
 | dataset        |   AutoARIMA |   FFT |   LightGBMModel |   LinearRegressionModel |   NBEATSModel |   NHiTSModel |   NLinearModel |   NaiveSeasonal |   Prophet |   TCNModel |
 |:---------------|------------:|------:|----------------:|------------------------:|--------------:|-------------:|---------------:|----------------:|----------:|-----------:|
 | Air passengers |       0.468 | 0.299 |           0.52  |                   0.112 |         0.356 |        0.225 |          0.338 |           0.61  |     0.299 |      0.895 |
@@ -28,3 +27,5 @@ Shorte time horizon performance with 10 minutes of Optuna tuning per model:
 | Sunspots       |       0.377 | 0.794 |           0.354 |                   0.357 |         0.412 |        0.372 |          0.352 |           0.381 |     0.873 |      0.389 |
 | USGasoline     |       0.385 | 0.437 |           0.251 |                   0.306 |         0.323 |        0.347 |          0.372 |           0.399 |     0.345 |      0.423 |
 | Weather        |       0.105 | 0.303 |           0.043 |                   0.059 |         0.099 |        0.116 |          0.078 |           0.202 |     0.37  |      0.083 |
+
+We will soon relieaze a blog article going much deeper in the benchmarking and the analysis.

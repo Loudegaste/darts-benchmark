@@ -82,8 +82,8 @@ def evaluate_model(
         print(f"No model params provided for model {model_class.__name__}," 
               "using the ones from the param_space.FIXED_PARAMS")
         model_params = FIXED_PARAMS[model_class.__name__](
-            series=series,
-            forecast_horizon=forecast_horizon, 
+            series=series.split_after(split)[0],
+            forecast_horizon=forecast_horizon,
             past_covariates=past_covariates,
             future_covariates=future_covariates
             )      
